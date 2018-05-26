@@ -10,6 +10,7 @@ uniform Properties {
 
 out vec2 v_TexCoord;
 out vec2 v_ScreenPixelCoord;
+flat out vec2 v_QuadSizeInPixels;
 
 void main() {
 
@@ -22,6 +23,7 @@ void main() {
 
     v_TexCoord = a_CornerZeroToOne;
     v_ScreenPixelCoord = pixel_coord;
+    v_QuadSizeInPixels = i_SizeInPixels;
 
     gl_Position = vec4(screen_coord, 0, 1);
 }
