@@ -65,14 +65,14 @@ where
 }
 
 fn main() {
-    let image = image::load_from_memory(include_bytes!("images/example.png"))
+    let image = image::load_from_memory(include_bytes!("images/empty.png"))
         .expect("Failed to decode image")
         .to_rgba();
 
     let (image_width, image_height) = image.dimensions();
 
-    let window_width = image_width * 2;
-    let window_height = image_height * 2;
+    let window_width = image_width;
+    let window_height = image_height;
 
     let builder = glutin::WindowBuilder::new()
         .with_dimensions(window_width, window_height)
@@ -166,7 +166,9 @@ fn main() {
                 }
                 glutin::WindowEvent::CursorMoved {
                     position: (x, y), ..
-                } => if x >= 0. && x < 960. && y >= 0. && y < 720. {
+                } => if x >= 0. && x < image_width as f64 && y >= 0.
+                    && y < image_height as f64
+                {
                     encoder.update_constant_buffer(
                         &bundle.data.renderer_input,
                         &RendererInput {
