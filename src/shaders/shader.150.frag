@@ -177,7 +177,7 @@ bool is_pixel_illuminated(vec2 px_start_coord, vec2 px_light_coord, sampler2D wo
     float px_start_to_light_distance = distance(px_start_coord, px_light_coord);
     vec2 px_coord = px_start_coord;
     vec2 px_to_light = px_light_coord - px_coord;
-    Lod lod = Lod(0, 1);
+    Lod lod = Lod(3, 8);
 
     for (int i = 0; i < 255; i++) {
         vec2 scaled_coord = px_coord / lod.pixel_size;
@@ -211,27 +211,43 @@ bool is_pixel_illuminated(vec2 px_start_coord, vec2 px_light_coord, sampler2D wo
             }
         }
 
-        if (distance(px_start_coord, px_next_coord) > px_start_to_light_distance) {
-            return true;
-        }
-
         vec2 px_sample_coord = (px_coord + px_next_coord) / 2;
+
+        ZoomIn zi = zoom_in(px_sample_coord, lod, world, world_size);
+        if (!zi.transparent) {
+            Target0 = vec4(0.5,0.5,1,1) * texture(t_Texture, v_TexCoord);
+            return false;
+        }
+        lod = zi.lod;
+
+
+
+        /*
         vec4 sampled_colour = textureLod(world, px_sample_coord / world_size, lod.exponent);
         if (!is_transparent(sampled_colour)) {
             return false;
+        }
+        */
+
+
+        if (distance(px_start_coord, px_next_coord) > px_start_to_light_distance) {
+            Target0 = vec4(0,lod.exponent / 5,0,1) * texture(t_Texture, v_TexCoord);
+//            Target0 = vec4(0,float(i)/255.0,0,1) * texture(t_Texture, v_TexCoord);
+            return true;
         }
 
         px_coord = px_next_coord;
     }
 
+    Target0 = vec4(1,0.5,0.5,1) * texture(t_Texture, v_TexCoord);
     return false;
 }
 
 void main() {
     if (is_pixel_illuminated(v_ScreenPixelCoord, u_MousePositionInPixels, t_Texture, v_QuadSizeInPixels)) {
-        Target0 = texture(t_Texture, v_TexCoord);
+        //Target0 = texture(t_Texture, v_TexCoord);
     } else {
-        Target0 = texture(t_Texture, v_TexCoord) / 3;
+        //Target0 = texture(t_Texture, v_TexCoord) / 3;
     }
 }
 

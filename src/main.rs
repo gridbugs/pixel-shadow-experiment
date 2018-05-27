@@ -65,7 +65,7 @@ where
 }
 
 fn main() {
-    let image = image::load_from_memory(include_bytes!("images/example.png"))
+    let image = image::load_from_memory(include_bytes!("images/widths.png"))
         .expect("Failed to decode image")
         .to_rgba();
 
