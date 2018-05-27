@@ -14,8 +14,8 @@ uniform RendererInput {
     vec2 u_MousePositionInPixels;
 };
 
-const float JUST_ABOVE_ZERO = 0.01;
-const float JUST_UNDER_ONE  = 0.99;
+const float JUST_ABOVE_ZERO = 0.000001;
+const float JUST_UNDER_ONE  = 0.999999;
 
 bool is_transparent(vec4 colour) {
     return colour.r > JUST_UNDER_ONE;
@@ -32,27 +32,29 @@ struct Lod {
 
 struct ZoomIn {
     bool transparent;
+    bool opaque;
     Lod lod;
 };
 
 ZoomIn zoom_in(vec2 px_coord, Lod lod, sampler2D world, vec2 world_size) {
     // zoom into a fully-transparent pixel
     vec2 tex_coord_to_test = px_coord / world_size;
+    bool transparent = true;
     while (lod.exponent >= 0) {
         vec4 colour = textureLod(world, tex_coord_to_test, lod.exponent);
         if (is_transparent(colour)) {
             break;
         }
-
         if (is_opaque(colour)) {
-            return ZoomIn(false, lod);
+            return ZoomIn(false, true, lod);
         }
 
         lod.exponent -= 1;
         lod.pixel_size /= 2;
+        transparent = false;
     }
 
-    return ZoomIn(true, lod);
+    return ZoomIn(transparent, false, lod);
 }
 
 struct CrossPixel {
@@ -177,7 +179,7 @@ bool is_pixel_illuminated(vec2 px_start_coord, vec2 px_light_coord, sampler2D wo
     float px_start_to_light_distance = distance(px_start_coord, px_light_coord);
     vec2 px_coord = px_start_coord;
     vec2 px_to_light = px_light_coord - px_coord;
-    Lod lod = Lod(3, 8);
+    Lod lod = Lod(7, 128);
 
     for (int i = 0; i < 255; i++) {
         vec2 scaled_coord = px_coord / lod.pixel_size;
@@ -212,13 +214,23 @@ bool is_pixel_illuminated(vec2 px_start_coord, vec2 px_light_coord, sampler2D wo
         }
 
         vec2 px_sample_coord = (px_coord + px_next_coord) / 2;
+        vec4 sample_colour = textureLod(world, px_sample_coord / world_size, lod.exponent);
 
-        ZoomIn zi = zoom_in(px_sample_coord, lod, world, world_size);
-        if (!zi.transparent) {
-            Target0 = vec4(0.5,0.5,1,1) * texture(t_Texture, v_TexCoord);
+        if (is_opaque(sample_colour)) {
+            Target0 = vec4(0.5,0.5,1,1) * textureLod(t_Texture, v_TexCoord, 0);
             return false;
+        } else if (is_transparent(sample_colour)) {
+            if (distance(px_start_coord, px_next_coord) > px_start_to_light_distance) {
+                Target0 = vec4(0,lod.exponent / 7,0,1) * texture(t_Texture, v_TexCoord);
+    //            Target0 = vec4(0,float(i)/255.0,0,1) * texture(t_Texture, v_TexCoord);
+                return true;
+            } else {
+                px_coord = px_next_coord;
+            }
+        } else {
+            lod.exponent -= 1;
+            lod.pixel_size /= 2;
         }
-        lod = zi.lod;
 
 
 
@@ -230,13 +242,7 @@ bool is_pixel_illuminated(vec2 px_start_coord, vec2 px_light_coord, sampler2D wo
         */
 
 
-        if (distance(px_start_coord, px_next_coord) > px_start_to_light_distance) {
-            Target0 = vec4(0,lod.exponent / 5,0,1) * texture(t_Texture, v_TexCoord);
-//            Target0 = vec4(0,float(i)/255.0,0,1) * texture(t_Texture, v_TexCoord);
-            return true;
-        }
 
-        px_coord = px_next_coord;
     }
 
     Target0 = vec4(1,0.5,0.5,1) * texture(t_Texture, v_TexCoord);
